@@ -16,7 +16,8 @@ var options = {
     port: config.ServerPort || 7002,
     tls: null
 };
-
+var User_accId= null;
+var Password_secreKey= null;
 var pathSeperator = path.sep;
 
 
@@ -58,7 +59,7 @@ var getContainerState = function (container, callback) {
 var filecount=0;
 var fsImplementation = {
     /*
-    * */
+     * */
     readdir: function (path, callback) {
         logger.info('readdir:: called for path ' + path);
         if (path == pathSeperator) {
@@ -173,20 +174,20 @@ var fsImplementation = {
                     }
                 }
             }
-                logger.info('stat:: Getting File from S3.Container Name- %s, File Name- %s', containerName, fileName);
-                s3cloud.GetFile(containerName, fileName, function (err, file) {
-                    if (err) {
-                        logger.error('stat:: Error occurred while getting file from S3. Error-' + err);
-                        callback(err, null);
-                        return;
-                    }
-                    if(isDirectory){
-                        getFolderState(file.size,file.lastModified, callback);
-                    }else{
-                        getFileState(file.size, file.lastModified, callback);
-                    }
+            logger.info('stat:: Getting File from S3.Container Name- %s, File Name- %s', containerName, fileName);
+            s3cloud.GetFile(containerName, fileName, function (err, file) {
+                if (err) {
+                    logger.error('stat:: Error occurred while getting file from S3. Error-' + err);
+                    callback(err, null);
+                    return;
+                }
+                if(isDirectory){
+                    getFolderState(file.size,file.lastModified, callback);
+                }else{
+                    getFileState(file.size, file.lastModified, callback);
+                }
 
-                });
+            });
 
         }
     },
@@ -286,26 +287,29 @@ exports.Start = function () {
     });
 
     server.on('client:connected', function (connection) {
-        var username = null;
+
         console.log('client connected: ' + connection.remoteAddress);
+
         connection.on('command:user', function (user, success, failure) {
             if (user) {
-                username = user;
+                User_accId = user;
                 success();
             } else {
                 failure();
             }
         });
 
-
         connection.on('command:pass', function (pass, success, failure) {
             //TODO:- Put authentication logic here
             if (pass) {
-                success(username, fsImplementation);
+                s3cloud.ImportPkgClient(User_accId,Password_secreKey);
+                Password_secreKey=pass;
+                success(User_accId, fsImplementation);
             } else {
                 failure();
             }
         });
+
     });
 
     server.debugging = 0;

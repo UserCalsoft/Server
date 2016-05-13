@@ -3,12 +3,19 @@
 var config = require('./config.js');
 var logger = require('./logger.js').logger;
 var fs = require('fs');
-var client = require('pkgcloud').storage.createClient({
-    provider: 'amazon',
-    keyId: config.AccessKeyId, // access key id
-    key: config.SecretKey, // secret key
-    region: config.Region // region
-});
+var AWS = require('aws-sdk')
+var client ;
+
+exports.ImportPkgClient = function (Acc_key_Id,Secret_Key){
+    //console.log('Acc_key_Id  '+Acc_key_Id+'----Secret_Key  '+Secret_Key)
+    client = require('pkgcloud').storage.createClient({
+        provider: 'amazon',
+        keyId: Acc_key_Id, // access key id
+        key: Secret_Key, // secret key
+        region: config.Region,// region
+        endpoint : new AWS.Endpoint(config.S3Endpoint)
+    });
+};
 
 /*
  * Method to Get list of files in a bucket from S3
@@ -41,13 +48,13 @@ exports.GetFile = function(containerName,fileName, callback){
 };
 
 /*
-* Method to Upload a file on S3
-* Input Params:
-*   fileName:- full path of the file (excluding bucket name in it)
-*   container:- Name of the bucket
-* Output:
-*   WriteStream
-* */
+ * Method to Upload a file on S3
+ * Input Params:
+ *   fileName:- full path of the file (excluding bucket name in it)
+ *   container:- Name of the bucket
+ * Output:
+ *   WriteStream
+ * */
 exports.UploadFile = function(fileName, container) {
     var writeStream = client.upload({
         container: container,
@@ -76,7 +83,7 @@ exports.UploadFile = function(fileName, container) {
  *   ReadStream
  * */
 exports.DownloadFile = function(fileName,container){
-   var readStream = client.download({
+    var readStream = client.download({
         container: container,
         remote: fileName
     });
