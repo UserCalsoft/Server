@@ -9,8 +9,6 @@ var S3_Server_EndPoint ="https://s3.amazonaws.com";
 
 exports.ServerPort = Server_Port;
 exports.ServerIP = Server_IP;
-exports.AccessKeyId = Access_Key_Id;
-exports.SecretKey = Secret_Key;
 exports.Region = Region;
 exports.FileListCountLimit = File_List_Count_Limit;
 exports.S3ServerEndPoint = S3_Server_EndPoint;
