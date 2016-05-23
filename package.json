@@ -1,19 +1,20 @@
 {
   "name": "igneousftpserver",
   "version": "1.0.0",
-  "description": "An FTP to S3 Converter",
+  "description": "An FTP Server implementation on S3 Interface",
   "main": "server.js",
   "scripts": {
     "test": ""
   },
   "keywords": [
-    "igneous"
+    "igneous, S3, FTP, FTPServer"
   ],
-  "author": "suresh patidar",
+  "author": "calsoftinc",
   "license": "ISC",
   "dependencies": {
     "ftpd": "^0.2.15",
-    "aws-sdk":"2.3.6",
-    "winston":"2.2.0"
+    "aws-sdk":"^2.3.13",
+    "winston":"^2.2.0",
+    "s3-upload-stream":"^1.0.7"
   }
 }
