@@ -1,4 +1,4 @@
 /** This module serves as entry point for the application */
 
-var ftpServer = require('./ftpserver.js');
+var ftpServer = require('./ftp/ftpserver.js');
 ftpServer.Start();
