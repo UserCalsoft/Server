@@ -4,7 +4,6 @@ var config = require('../config.js');
 var logger = require('../logger/logger.js').logger;
 var AWS = require('aws-sdk');
 var s3UploadStream = null;
-
 var s3Client = null;
 
 exports.Initialize = function (Access_Key_ID, Secret_Key) {
@@ -20,6 +19,7 @@ exports.Initialize = function (Access_Key_ID, Secret_Key) {
  * Get List of buckets
  * */
 exports.ListBuckets = function (callback) {
+    logger.info('ListBuckets:: called for Listing Buckets');
     if (s3Client == null) {
         callback(new Error("S3 Client not initialized"), null);
     }
@@ -40,6 +40,7 @@ exports.ListBuckets = function (callback) {
  * Callback with Location on success
  * */
 exports.CreateBucket = function (bucketName, callback) {
+    logger.info('CreateBucket:: called for Create Bucket for Bucket Name- '+bucketName);
     if (s3Client == null) {
         callback(new Error("S3 Client not initialized"), null);
     }
@@ -59,6 +60,7 @@ exports.CreateBucket = function (bucketName, callback) {
  * Delete Bucket
  * */
 exports.DeleteBucket = function (bucketName, callback) {
+    logger.info('DeleteBucket:: called for Delete Bucket for Bucket Name- '+bucketName);
     if (s3Client == null) {
         callback(new Error("S3 Client not initialized"), null);
     }
@@ -77,6 +79,7 @@ exports.DeleteBucket = function (bucketName, callback) {
  * API REF:- http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#headBucket-property
  * */
 exports.GetBucketDetail = function (bucketName, callback) {
+    logger.info('GetBucketDetail:: called for Get Bucket Detail for Bucket Name- '+bucketName);
     if (s3Client == null) {
         callback(new Error("S3 Client not initialized"), null);
     }
@@ -96,6 +99,7 @@ exports.GetBucketDetail = function (bucketName, callback) {
  * API REF http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#listObjects-property
  * */
 exports.ListObjects = function (bucketName, prefix, callback) {
+    logger.info('ListObjects:: called for listing object for Bucket Name- '+bucketName + 'with prefix '+ prefix);
     if (s3Client == null) {
         callback(new Error("S3 Client not initialized"), null);
     }
@@ -116,6 +120,7 @@ exports.ListObjects = function (bucketName, prefix, callback) {
  * return a writable stream
  * */
 exports.UploadObject = function (bucketName, fileName) {
+    logger.info('UploadObject:: called for upload object for Bucket Name- '+bucketName + 'with File '+ fileName);
     if (s3Client == null || s3UploadStream == null) {
         //callback(new Error("S3 Client not initialized"), null);
         return null;
@@ -138,6 +143,7 @@ exports.UploadObject = function (bucketName, fileName) {
  * Create new Folder in Bucket
  * */
 exports.CreateFolder = function (bucketName, folderPath, callback) {
+    logger.info('CreateFolder:: called for create folder for Bucket Name- '+bucketName + 'with folder path '+ folderPath);
     if (s3Client == null) {
         callback(new Error("S3 Client not initialized"), null);
     }
@@ -158,6 +164,7 @@ exports.CreateFolder = function (bucketName, folderPath, callback) {
  * http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#getObject-property
  * */
 exports.GetObject = function (bucketName, fileName, callback) {
+    logger.info('GetObject:: called for get object for Bucket Name- '+bucketName + 'with file name '+ fileName);
     if (s3Client == null) {
         //callback(new Error("S3 Client not initialized"), null);
         return null;
@@ -177,6 +184,7 @@ exports.GetObject = function (bucketName, fileName, callback) {
  * API REF:- http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#headObject-property
  * */
 exports.GetObjectDetail = function (bucketName, fileName, callback) {
+    logger.info('GetObjectDetail:: called for get object details for Bucket Name- '+bucketName + 'with file name '+ fileName);
     if (s3Client == null) {
         callback(new Error("S3 Client not initialized"), null);
     }
@@ -198,6 +206,7 @@ exports.GetObjectDetail = function (bucketName, fileName, callback) {
  * API ref: http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#deleteObject-property
  * */
 exports.DeleteObject = function (bucketName, fileName, callback) {
+    logger.info('DeleteObject:: called for delete object  for Bucket Name- '+bucketName + 'with file name '+ fileName);
     if (s3Client == null) {
         callback(new Error("S3 Client not initialized"), null);
     }
@@ -217,6 +226,7 @@ exports.DeleteObject = function (bucketName, fileName, callback) {
  * Delete Multiple Objects
  * */
 exports.deleteObjects = function (bucketName, arrfiles, callback) {
+    logger.info('deleteObjects:: called for delete folder for Bucket Name- '+bucketName);
     if (s3Client == null) {
         callback(new Error("S3 Client not initialized"), null);
     }
@@ -236,5 +246,4 @@ exports.deleteObjects = function (bucketName, arrfiles, callback) {
         });
     }
 };
-
 

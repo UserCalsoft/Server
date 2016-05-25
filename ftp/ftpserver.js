@@ -13,12 +13,12 @@ var pathSeparator = path.sep;
 var s3PathSeparator ='/';
 
 /******************************** [START] Custom Implementation for FS Operations ****************************************/
-
 /**
  * Utility Method to Parse FTP Path string
  * return object containing various useful information from the path.
  * */
 var parseFtpPath = function(path){
+    logger.info('parseFtpPath::Called For Path - '+path);
     var pathObject = {
         isRootPath : false,
         bucketName : null,
@@ -26,9 +26,11 @@ var parseFtpPath = function(path){
         isFolderObject : false
     };
     if(path == pathSeparator){
+        logger.info('parseFtpPath::Called For rootpath - '+path);
         pathObject.isRootPath = true;
     }
     else{
+        logger.info('parseFtpPath::Called For Folder path - '+path);
         var pathFragments = path.split(pathSeparator);
         pathObject.bucketName = pathFragments[1];
         //Prepare S3 Object Key
@@ -56,17 +58,20 @@ var parseFtpPath = function(path){
  * return object containing Stat information.
  * */
 var getStats = function(mode, isDirectory,size,mTime){
+    logger.info('getStats::Called For get Stats');
     var stat ={
         mode:mode || 12345,
         size:size||0,
         mtime:mTime
     };
     if(isDirectory){
+        logger.info('getStats::Checking for isDirectory, which return true');
         stat.isDirectory = function(){
             return true;
         }
     }
     else{
+        logger.info('getStats::Checking for isDirectory, which return false');
         stat.isDirectory = function(){
             return false;
         }
@@ -86,16 +91,19 @@ var endsWith = function(str, suffix) {
  * This method will be invoked on every list command
  * */
 var readDir = function(path,callback){
+    logger.info('readDir::Reading Dir For path - '+path);
     var pathObject = this.parseFtpPathUtil(path);
     var self = this;
     if(pathObject.isRootPath){
         //We are on root path so we have to list all the buckets as directories on root
         this.s3adapter.ListBuckets(function(err,buckets){
             if(err){
+                logger.error('readDir:: Error occurred in Listing Buckets. Err- '+err);
                 self.localStore.buckets = [];
                 callback(err,null);
             }
             else{
+                logger.info('readDir:: Listing Buckets.');
                 var bucketList =[];
                 self.localStore.buckets = [];
                 buckets.forEach(function(bucket){
@@ -116,10 +124,12 @@ var readDir = function(path,callback){
 
         this.s3adapter.ListObjects(pathObject.bucketName, prefix, function(err,data){
             if(err){
+                logger.error('readDir:: Error occurred in Listing Folders. Err- '+err);
                 self.localStore.objects = [];
                 callback(err,null);
             }
             else{
+                logger.info('readDir:: Listing Folders.');
                 self.localStore.objects = [];
                 var objectList = [];
                 data.Contents.forEach(function(obj){
@@ -146,6 +156,7 @@ var readDir = function(path,callback){
  * This method will be invoked for each folder/file before returning the listing to the ftp client
  * */
 var stat = function(path,callback){
+    logger.info('stat:: Called for Path %s', path);
     var pathObject = this.parseFtpPathUtil(path);
     var self = this;
     var stats = null;
@@ -165,6 +176,7 @@ var stat = function(path,callback){
             // Hence get if from S3 and put it in local store for subsequent use.
             this.s3adapter.ListBuckets(function(err,buckets){
                 if(err){
+                    logger.error('stat:: Error occurred in Listing Bucket. Err- '+err);
                     self.localStore.buckets = [];
                     callback(err,null);
                 }
@@ -208,11 +220,13 @@ var stat = function(path,callback){
             callback(null,stats);
         }
         else{
+            logger.info('stat:: Since State could not found in local storage hence try to find it from S3');
             //TODO: This code block should not hit. Log if it is called.
             //Since State could not found in local storage hence try to find it from S3
             this.s3adapter.GetObjectDetail(pathObject.bucketName, pathObject.objectKey,function(err,data){
                 //Get Object Details from S3 Server
                 if(err){
+                    logger.error('stat:: Error occurred while  State not found in local storage hence try to find it from S3. Err- '+err);
                     callback(err,null);
                 }
                 else{
@@ -224,6 +238,7 @@ var stat = function(path,callback){
     }
     else{
         //TODO: Log exception as this should never happen
+        logger.error('stat:: Failed to get stat as Bucket and ObjectKey both are null');
         callback(new Error("Failed to get stat as Bucket and ObjectKey both are null"),null);
     }
 
@@ -238,52 +253,67 @@ var stat = function(path,callback){
 var unLink = function(fileName,callback){
     var pathObject = this.parseFtpPathUtil(fileName);
     var self = this;
-    self.s3adapter.GetObjectDetail(pathObject.bucketName,pathObject.objectKey,function(err,data){
-        //Get object with the give object key
-        if(!err){
-            //Object found, hence delete it
-            self.s3adapter.DeleteObject(pathObject.bucketName,pathObject.objectKey,function(err,data){
-                if(err){
-                    //TODO Log this error message
-                }
-                callback(err)
-            });
-        }
-        else{
-            //Unlink usually called for files so this code block should never hit.
-            //It is just for fall back
-            //Object key not found. It can be a directory so find it again with trailing "/"
-            pathObject.objectKey += s3PathSeparator;
-            self.s3adapter.GetObjectDetail(pathObject.bucketName,pathObject.objectKey,function(err,data){
-                if(!err){
-                    //Get all other files in this folder
-                    self.s3adapter.ListObjects(pathObject.bucketName,pathObject.objectKey,function(err,data){
-                        if(!err){
-                            var objectsToDelete = [];
-                            objectsToDelete.push(pathObject.objectKey);
-                            data.Contents.forEach(function(object){
-                                objectsToDelete.push(object.Key);
-                            });
-                            self.s3adapter.deleteObjects(pathObject.bucketName,objectsToDelete,function(err,data){
-                                if(err){
-                                    //TODO log this error
-                                }
+    if(pathObject.bucketName != null && pathObject.objectKey == null){
+        //The Command is to Delete bucket
+        this.s3adapter.DeleteBucket(pathObject.bucketName,function(err,data){
+            if(err){
+                logger.error('unLink:: Error occurred while deleting Bucket. Err- '+err);
+            }
+            callback(err);
+        });
+    }
+    else if(pathObject.bucketName != null && pathObject.objectKey != null) {
+        self.s3adapter.GetObjectDetail(pathObject.bucketName, pathObject.objectKey, function (err, data) {
+            //Get object with the give object key
+            if (!err) {
+                //Object found, hence delete it
+                self.s3adapter.DeleteObject(pathObject.bucketName, pathObject.objectKey, function (err, data) {
+                    if (err) {
+                        logger.error('unLink:: Error occurred while deleting Object. Err- '+err);
+                    }
+                    callback(err)
+                });
+            }
+            else {
+                //Unlink usually called for files so this code block should never hit.
+                //It is just for fall back
+                //Object key not found. It can be a directory so find it again with trailing "/"
+                pathObject.objectKey += s3PathSeparator;
+                self.s3adapter.GetObjectDetail(pathObject.bucketName, pathObject.objectKey, function (err, data) {
+                    if (!err) {
+                        //Get all other files in this folder
+                        self.s3adapter.ListObjects(pathObject.bucketName, pathObject.objectKey, function (err, data) {
+                            if (!err) {
+                                var objectsToDelete = [];
+                                objectsToDelete.push(pathObject.objectKey);
+                                data.Contents.forEach(function (object) {
+                                    objectsToDelete.push(object.Key);
+                                });
+                                self.s3adapter.deleteObjects(pathObject.bucketName, objectsToDelete, function (err, data) {
+                                    if (err) {
+                                        logger.error('unLink:: Error occurred while deleting folder. Err- '+err);
+                                    }
+                                    callback(err);
+                                });
+                            }
+                            else {
+                                logger.error('unLink:: Error occurred while listing  folders to delete. Err- '+err);
                                 callback(err);
-                            });
-                        }
-                        else{
-                            //TODO log the error
-                            callback(err);
-                        }
-                    })
-                }
-                else{
-                    //TODO log the error
-                    callback(err);
-                }
-            });
-        }
-    });
+                            }
+                        })
+                    }
+                    else {
+                        logger.error('unLink:: Error occurred while  getting  folders details to delete. Err- '+err);
+                        callback(err);
+                    }
+                });
+            }
+        });
+    }
+    else{
+        logger.error('unLink::Bucket Name and Object Key both are null');
+        callback(new Error("Bucket Name and Object Key both are null"));
+    }
 };
 
 /**
@@ -295,7 +325,7 @@ var mkDir = function(path,access,callback){
         //The Command is to create new bucket
         this.s3adapter.CreateBucket(pathObject.bucketName,function(err,data){
             if(err){
-                //TODO: Log Error
+                logger.error('mkDir:: Error occurred while  creating Bucket. Err- '+err);
             }
             callback(err);
         });
@@ -307,15 +337,15 @@ var mkDir = function(path,access,callback){
             pathObject.objectKey += s3PathSeparator;
         }
         this.s3adapter.CreateFolder(pathObject.bucketName,pathObject.objectKey, function(err,data){
-           if(err){
-               //TODO: Log the error
-           }
+            if(err){
+                logger.error('mkDir:: Error occurred while  creating folder. Err- '+err);
+            }
             callback(err);
         });
 
     }
     else{
-        //TODO log this case
+        logger.error('mkDir:: Bucket Name and Object Key both are null');
         callback(new Error("Bucket Name and Object Key both are null"));
     }
 };
@@ -342,7 +372,7 @@ var rmDir = function(path,callback){
         //The Command is to Delete bucket
         this.s3adapter.DeleteBucket(pathObject.bucketName,function(err,data){
             if(err){
-                //TODO: Log Error
+                logger.error('rmDir:: Error occurred while  deleting Bucket. Err- '+err);
             }
             callback(err);
         });
@@ -362,18 +392,19 @@ var rmDir = function(path,callback){
                 });
                 self.s3adapter.deleteObjects(pathObject.bucketName,objectsToDelete,function(err,data){
                     if(err){
-                        //TODO log this error
+                        logger.error('rmDir:: Error occurred while  deleting folder. Err- '+err);
                     }
                     callback(err);
                 });
             }
             else{
-                //TODO: Log the error;
+                logger.error('rmDir:: Error occurred while listing folders to delete. Err- '+err);
+				callback(err);
             }
         })
     }
     else{
-        //TODO log this case
+        logger.error('rmDir:: Bucket Name and Object Key both are null');
         callback(new Error("Bucket Name and Object Key both are null"));
     }
 };
@@ -460,7 +491,7 @@ var customFsImplementation = {
  * Method to start FTP Server
  * */
 exports.Start = function () {
-    server = new ftpd.FtpServer(config.ServerIP || '127.0.0.1', {
+    server = new ftpd.FtpServer(process.env.FTP_SERVER_IP || '127.0.0.1', {
         getInitialCwd: function () {
             return '';
         },
@@ -510,4 +541,5 @@ exports.Start = function () {
 
     server.debugging = 4;
     server.listen(config.ServerPort || 7002);
+    logger.info('Server listening on Port - '+config.ServerPort );
 };

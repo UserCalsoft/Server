@@ -7,7 +7,7 @@ var winston = require('winston');
 var logger = new (winston.Logger)({
     transports: [
         new (winston.transports.Console)({
-            level:'info'
+            level:'error'
         }),
         new (winston.transports.File)({
             level: 'error',
