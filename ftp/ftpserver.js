@@ -18,7 +18,7 @@ var s3PathSeparator ='/';
  * return object containing various useful information from the path.
  * */
 var parseFtpPath = function(path){
-    logger.info('parseFtpPath::Called For Path - '+path);
+    logger.info('ftp:parseFtpPath:Called For Path - '+path);
     var pathObject = {
         isRootPath : false,
         bucketName : null,
@@ -26,11 +26,11 @@ var parseFtpPath = function(path){
         isFolderObject : false
     };
     if(path == pathSeparator){
-        logger.info('parseFtpPath::Called For rootpath - '+path);
+        logger.info('ftp:parseFtpPath:Called For rootpath - '+path);
         pathObject.isRootPath = true;
     }
     else{
-        logger.info('parseFtpPath::Called For Folder path - '+path);
+        logger.info('ftp:parseFtpPath:Called For Folder path - '+path);
         var pathFragments = path.split(pathSeparator);
         pathObject.bucketName = pathFragments[1];
         //Prepare S3 Object Key
@@ -58,20 +58,20 @@ var parseFtpPath = function(path){
  * return object containing Stat information.
  * */
 var getStats = function(mode, isDirectory,size,mTime){
-    logger.info('getStats::Called For get Stats');
+    logger.info('ftp:getStats:Called For get Stats');
     var stat ={
         mode:mode || 12345,
         size:size||0,
         mtime:mTime
     };
     if(isDirectory){
-        logger.info('getStats::Checking for isDirectory, which return true');
+        logger.info('ftp:getStats:Checking for isDirectory, which return true');
         stat.isDirectory = function(){
             return true;
         }
     }
     else{
-        logger.info('getStats::Checking for isDirectory, which return false');
+        logger.info('ftp:getStats:Checking for isDirectory, which return false');
         stat.isDirectory = function(){
             return false;
         }
@@ -91,19 +91,19 @@ var endsWith = function(str, suffix) {
  * This method will be invoked on every list command
  * */
 var readDir = function(path,callback){
-    logger.info('readDir::Reading Dir For path - '+path);
+    logger.info('ftp:readDir:Reading Dir For path - '+path);
     var pathObject = this.parseFtpPathUtil(path);
     var self = this;
     if(pathObject.isRootPath){
         //We are on root path so we have to list all the buckets as directories on root
         this.s3adapter.ListBuckets(function(err,buckets){
             if(err){
-                logger.error('readDir:: Error occurred in Listing Buckets. Err- '+err);
+                logger.error('ftp:readDir:list: Error occurred in Listing Buckets. Err- '+err);
                 self.localStore.buckets = [];
                 callback(err,null);
             }
             else{
-                logger.info('readDir:: Listing Buckets.');
+                logger.info('ftp:readDir: Listing Buckets. Bucket count:-' + buckets.length);
                 var bucketList =[];
                 self.localStore.buckets = [];
                 buckets.forEach(function(bucket){
@@ -124,12 +124,12 @@ var readDir = function(path,callback){
 
         this.s3adapter.ListObjects(pathObject.bucketName, prefix, function(err,data){
             if(err){
-                logger.error('readDir:: Error occurred in Listing Folders. Err- '+err);
+                logger.error('ftp:readDir:listinbucket: Error occurred in Listing Folders. Err- '+err);
                 self.localStore.objects = [];
                 callback(err,null);
             }
             else{
-                logger.info('readDir:: Listing Folders.');
+                logger.info('ftp:readDir: Listing Folders. Object count: ' + data.Contents.length);
                 self.localStore.objects = [];
                 var objectList = [];
                 data.Contents.forEach(function(obj){
@@ -156,7 +156,7 @@ var readDir = function(path,callback){
  * This method will be invoked for each folder/file before returning the listing to the ftp client
  * */
 var stat = function(path,callback){
-    logger.info('stat:: Called for Path %s', path);
+    logger.info('ftp:stat: Called for Path %s', path);
     var pathObject = this.parseFtpPathUtil(path);
     var self = this;
     var stats = null;
@@ -176,7 +176,7 @@ var stat = function(path,callback){
             // Hence get if from S3 and put it in local store for subsequent use.
             this.s3adapter.ListBuckets(function(err,buckets){
                 if(err){
-                    logger.error('stat:: Error occurred in Listing Bucket. Err- '+err);
+                    logger.error('ftp:stat:list: Error occurred in Listing Bucket. Err- '+err);
                     self.localStore.buckets = [];
                     callback(err,null);
                 }
@@ -194,6 +194,7 @@ var stat = function(path,callback){
                         callback(null,stats);
                     }
                     else{
+                        logger.error('ftp:stat:list: Bucket details not found');
                         callback(new Error("Bucket details not found"),null);
                     }
                 }
@@ -220,13 +221,12 @@ var stat = function(path,callback){
             callback(null,stats);
         }
         else{
-            logger.info('stat:: Since State could not found in local storage hence try to find it from S3');
-            //TODO: This code block should not hit. Log if it is called.
+            logger.info('ftp:stat:froms3: Since State could not found in local storage hence try to find it from S3');
             //Since State could not found in local storage hence try to find it from S3
             this.s3adapter.GetObjectDetail(pathObject.bucketName, pathObject.objectKey,function(err,data){
                 //Get Object Details from S3 Server
                 if(err){
-                    logger.error('stat:: Error occurred while  State not found in local storage hence try to find it from S3. Err- '+err);
+                    logger.error('ftp:stat: Error occurred while  getting object detail from S3. Err- '+err);
                     callback(err,null);
                 }
                 else{
@@ -238,7 +238,7 @@ var stat = function(path,callback){
     }
     else{
         //TODO: Log exception as this should never happen
-        logger.error('stat:: Failed to get stat as Bucket and ObjectKey both are null');
+        logger.error('ftp:stat: Failed to get stat as Bucket and ObjectKey both are null');
         callback(new Error("Failed to get stat as Bucket and ObjectKey both are null"),null);
     }
 
@@ -257,7 +257,7 @@ var unLink = function(fileName,callback){
         //The Command is to Delete bucket
         this.s3adapter.DeleteBucket(pathObject.bucketName,function(err,data){
             if(err){
-                logger.error('unLink:: Error occurred while deleting Bucket. Err- '+err);
+                logger.error('ftp:unLink: Error occurred while deleting Bucket. Err- '+err);
             }
             callback(err);
         });
@@ -269,7 +269,7 @@ var unLink = function(fileName,callback){
                 //Object found, hence delete it
                 self.s3adapter.DeleteObject(pathObject.bucketName, pathObject.objectKey, function (err, data) {
                     if (err) {
-                        logger.error('unLink:: Error occurred while deleting Object. Err- '+err);
+                        logger.error('ftp:unLink: Error occurred while deleting Object. Err- '+err);
                     }
                     callback(err)
                 });
@@ -291,19 +291,19 @@ var unLink = function(fileName,callback){
                                 });
                                 self.s3adapter.deleteObjects(pathObject.bucketName, objectsToDelete, function (err, data) {
                                     if (err) {
-                                        logger.error('unLink:: Error occurred while deleting folder. Err- '+err);
+                                        logger.error('fpt:unLink: Error occurred while deleting folder. Err- '+err);
                                     }
                                     callback(err);
                                 });
                             }
                             else {
-                                logger.error('unLink:: Error occurred while listing  folders to delete. Err- '+err);
+                                logger.error('ftp:unLink: Error occurred while listing  folders to delete. Err- '+err);
                                 callback(err);
                             }
                         })
                     }
                     else {
-                        logger.error('unLink:: Error occurred while  getting  folders details to delete. Err- '+err);
+                        logger.error('ftp:unLink: Error occurred while  getting  folders details to delete. Err- '+err);
                         callback(err);
                     }
                 });
@@ -311,7 +311,7 @@ var unLink = function(fileName,callback){
         });
     }
     else{
-        logger.error('unLink::Bucket Name and Object Key both are null');
+        logger.error('ftp:unLink: Bucket Name and Object Key both are null');
         callback(new Error("Bucket Name and Object Key both are null"));
     }
 };
@@ -325,7 +325,7 @@ var mkDir = function(path,access,callback){
         //The Command is to create new bucket
         this.s3adapter.CreateBucket(pathObject.bucketName,function(err,data){
             if(err){
-                logger.error('mkDir:: Error occurred while  creating Bucket. Err- '+err);
+                logger.error('ftp:mkDir: Error occurred while  creating Bucket. Err- '+err);
             }
             callback(err);
         });
@@ -338,14 +338,14 @@ var mkDir = function(path,access,callback){
         }
         this.s3adapter.CreateFolder(pathObject.bucketName,pathObject.objectKey, function(err,data){
             if(err){
-                logger.error('mkDir:: Error occurred while  creating folder. Err- '+err);
+                logger.error('ftp:mkDir: Error occurred while  creating folder. Err- '+err);
             }
             callback(err);
         });
 
     }
     else{
-        logger.error('mkDir:: Bucket Name and Object Key both are null');
+        logger.error('ftp:mkDir: Bucket Name and Object Key both are null');
         callback(new Error("Bucket Name and Object Key both are null"));
     }
 };
@@ -372,7 +372,7 @@ var rmDir = function(path,callback){
         //The Command is to Delete bucket
         this.s3adapter.DeleteBucket(pathObject.bucketName,function(err,data){
             if(err){
-                logger.error('rmDir:: Error occurred while  deleting Bucket. Err- '+err);
+                logger.error('ftp:rmDir: Error occurred while  deleting Bucket. Err- '+err);
             }
             callback(err);
         });
@@ -392,19 +392,19 @@ var rmDir = function(path,callback){
                 });
                 self.s3adapter.deleteObjects(pathObject.bucketName,objectsToDelete,function(err,data){
                     if(err){
-                        logger.error('rmDir:: Error occurred while  deleting folder. Err- '+err);
+                        logger.error('ftp:rmDir: Error occurred while  deleting folder. Err- '+err);
                     }
                     callback(err);
                 });
             }
             else{
-                logger.error('rmDir:: Error occurred while listing folders to delete. Err- '+err);
+                logger.error('ftp:rmDir: Error occurred while listing folders to delete. Err- '+err);
 				callback(err);
             }
         })
     }
     else{
-        logger.error('rmDir:: Bucket Name and Object Key both are null');
+        logger.error('ftp:rmDir: Bucket Name and Object Key both are null');
         callback(new Error("Bucket Name and Object Key both are null"));
     }
 };
@@ -424,12 +424,16 @@ var rename = function(fileFrom, fileTo, callback){
             self.s3adapter.CopyObject(toPathObject.bucketName,copySource,toPathObject.objectKey,function(err,data){
                 if(!err){
                     self.s3adapter.DeleteObject(fromPathObject.bucketName,fromPathObject.objectKey,function(err,data){
+                        if(err){
+                            logger.error('ftp:rename:delete: Error renaming file. Err- '+err);
+                        }
                         //Callback in either case, i.e. delete success of failure.
                         callback(err);
                     })
                 }
                 else{
-                    //Copy failed, Callback with success.
+                    //Copy failed, Callback with failure.
+                    logger.error('ftp:rename:copy: Error renaming file. Err- '+err);
                     callback(err);
                 }
             });
@@ -440,6 +444,7 @@ var rename = function(fileFrom, fileTo, callback){
             self.s3adapter.ListObjects(fromPathObject.bucketName,prefix,function(err,data){
                 if(err){
                     //Didn't find anything with given prefix from S3 hence calling back with error
+                    logger.error('ftp:rename:list: Error renaming file. Err- '+err);
                     callback(err);
                 }
                 else{
@@ -461,15 +466,19 @@ var rename = function(fileFrom, fileTo, callback){
                             if(processedObjectCount == totalObjectsToProcess){
                                 if(objectsToDelete.length > 0){
                                     self.s3adapter.deleteObjects(fromPathObject.bucketName,objectsToDelete,function(err,data){
+                                        if(err){
+                                            logger.error('ftp:rename:delete: Error renaming file. Err- '+err);
+                                        }
                                         callback(err);
                                     });
                                 }
                                 else{
+                                    logger.error('ftp:rename:delete: Did not find objects to delete');
                                     callback(new Error("Unable to rename object"));
                                 }
                             }
                             else{
-                                //TODO: Just info log the processed count and total count.
+                                logger.info('ftp:rename:copycallback: Items to process:' + totalObjectsToProcess + ', Processed:-' + processedObjectCount);
                             }
                         });
                     });
@@ -604,5 +613,6 @@ exports.Start = function () {
 
     server.debugging = 0;
     server.listen(process.env.FTP_SERVER_PORT || 7002);
-    logger.info('Server listening on IP:- ' + process.env.FTP_SERVER_IP || '127.0.0.1' +   ', Port - '+process.env.FTP_SERVER_PORT || 7002 );
+    console.log('FTP Server listening on IP:-' + process.env.FTP_SERVER_IP || '127.0.0.1' + ', Port:-' + process.env.FTP_SERVER_PORT || 7002);
+    logger.info('Server listening on IP:- ' + process.env.FTP_SERVER_IP || '127.0.0.1' +   ', Port - ' + process.env.FTP_SERVER_PORT || 7002 );
 };
