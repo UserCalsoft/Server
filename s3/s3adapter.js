@@ -247,3 +247,25 @@ exports.deleteObjects = function (bucketName, arrfiles, callback) {
     }
 };
 
+/**
+ * Copy Object
+ * API REF:- http://docs.aws.amazon.com/AWSJavaScriptSDK/latest/AWS/S3.html#copyObject-property
+ * */
+exports.CopyObject = function (bucketName, copySource, destObjectKey, callback) {
+    if (s3Client == null) {
+        //callback(new Error("S3 Client not initialized"), null);
+        return null;
+    }
+    else {
+        var params = {
+            Bucket: bucketName, /* required */
+            CopySource: copySource, /* required */
+            Key: destObjectKey, /* required */
+        };
+        s3Client.copyObject(params, function(err, data) {
+            callback(err,data);
+        });
+    }
+};
+
+

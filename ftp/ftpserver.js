@@ -413,7 +413,70 @@ var rmDir = function(path,callback){
  * This method will be invoked on file rename command
  * */
 var rename = function(fileFrom, fileTo, callback){
-    callback(null);
+    var fromPathObject = this.parseFtpPathUtil(fileFrom);
+    var toPathObject = this.parseFtpPathUtil(fileTo);
+    var self = this;
+    //Get the source object detail
+    self.s3adapter.GetObjectDetail(fromPathObject.bucketName,fromPathObject.objectKey,function(err,data){
+        if(!err){
+            //Object found in S3, and it is a file hence copy it.
+            var copySource = encodeURI(fromPathObject.bucketName + s3PathSeparator + fromPathObject.objectKey);
+            self.s3adapter.CopyObject(toPathObject.bucketName,copySource,toPathObject.objectKey,function(err,data){
+                if(!err){
+                    self.s3adapter.DeleteObject(fromPathObject.bucketName,fromPathObject.objectKey,function(err,data){
+                        //Callback in either case, i.e. delete success of failure.
+                        callback(err);
+                    })
+                }
+                else{
+                    //Copy failed, Callback with success.
+                    callback(err);
+                }
+            });
+        }
+        else{
+            //Didn't find object in S3, It can be a directory, hence find all the Object in this directory and rename them.
+            var prefix = fromPathObject.objectKey + s3PathSeparator;
+            self.s3adapter.ListObjects(fromPathObject.bucketName,prefix,function(err,data){
+                if(err){
+                    //Didn't find anything with given prefix from S3 hence calling back with error
+                    callback(err);
+                }
+                else{
+                    //Iterate through each object returned from S3 and prepare list of source and destination object key list.
+                    var objectsToDelete =[];
+                    var totalObjectsToProcess = data.Contents.length;
+                    var processedObjectCount = 0;
+                    data.Contents.forEach(function(obj){
+                        var sourceObjectKey = obj.Key;
+                        var sourceObjectPath = encodeURI(fromPathObject.bucketName + s3PathSeparator + obj.Key);
+                        var desiObjectKey = obj.Key.replace(prefix, toPathObject.objectKey+s3PathSeparator);
+                        self.s3adapter.CopyObject(toPathObject.bucketName,sourceObjectPath,desiObjectKey,function(err,data){
+                            processedObjectCount += 1;
+                            if(!err){
+                                objectsToDelete.push(sourceObjectKey)
+                            }
+
+                            //Check if all copyObject requests are finished.
+                            if(processedObjectCount == totalObjectsToProcess){
+                                if(objectsToDelete.length > 0){
+                                    self.s3adapter.deleteObjects(fromPathObject.bucketName,objectsToDelete,function(err,data){
+                                        callback(err);
+                                    });
+                                }
+                                else{
+                                    callback(new Error("Unable to rename object"));
+                                }
+                            }
+                            else{
+                                //TODO: Just info log the processed count and total count.
+                            }
+                        });
+                    });
+                }
+            });
+        }
+    });
 };
 
 /**
@@ -539,7 +602,7 @@ exports.Start = function () {
         });
     });
 
-    server.debugging = 4;
-    server.listen(config.ServerPort || 7002);
-    logger.info('Server listening on Port - '+config.ServerPort );
+    server.debugging = 0;
+    server.listen(process.env.FTP_SERVER_PORT || 7002);
+    logger.info('Server listening on IP:- ' + process.env.FTP_SERVER_IP || '127.0.0.1' +   ', Port - '+process.env.FTP_SERVER_PORT || 7002 );
 };
