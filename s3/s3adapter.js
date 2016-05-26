@@ -8,8 +8,7 @@ var s3Client = null;
 
 exports.Initialize = function (Access_Key_ID, Secret_Key) {
     logger.info('S3:Initialize: called with access key id:-'+ Access_Key_ID + ' and secret key:-*******');
-    AWS.config.accessKeyId = Access_Key_ID;
-    AWS.config.secretAccessKey = Secret_Key;
+    AWS.config.update({accessKeyId:Access_Key_ID,secretAccessKey:Secret_Key});
     var endPoint = new AWS.Endpoint(config.S3ServerEndPoint);
     s3Client = new AWS.S3({endpoint: endPoint});
     s3UploadStream = require('s3-upload-stream')(s3Client);
@@ -67,7 +66,7 @@ exports.DeleteBucket = function (bucketName, callback) {
     }
     else {
         var params = {
-            Bucket: bucketName, /* Bucket Name (required) */
+            Bucket: bucketName /* Bucket Name (required) */
         };
         s3Client.deleteBucket(params, function(err, data) {
             callback(err, data);
@@ -262,7 +261,7 @@ exports.CopyObject = function (bucketName, copySource, destObjectKey, callback) 
         var params = {
             Bucket: bucketName, /* required */
             CopySource: copySource, /* required */
-            Key: destObjectKey, /* required */
+            Key: destObjectKey /* required */
         };
         s3Client.copyObject(params, function(err, data) {
             callback(err,data);
